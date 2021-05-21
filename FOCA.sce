@@ -15,8 +15,11 @@ clear;
 // Responsável pela limpeza de tela
 clc;
 
+//Solicitação ao usuário do endereço para obtenção do arquivo de entrada.
+entradaDeDados=input("Digite o endereço: ");//com localização do arquivo de entrada de dados. Obs: seguir instruções no arquivo Guideline.
+
 // Arquivo de Entrada com a estrutura da Rede de Distribuição.
-M = fscanfMat("C:\Users\Higor\Desktop\Iniciação científica\2021\Rede 16 barras\rede16barras.txt", "%lg"); // Importa arquivo que apresenta os dados de entrada da rede. 
+M = fscanfMat(entradaDeDados, "%lg"); // Importa arquivo que apresenta os dados de entrada da rede. 
 
 //"C:\Users\Higor\Desktop\Iniciação científica\2021\Rede 5 barras\rede5barras.txt"
 //"C:\Users\Higor\Desktop\Iniciação científica\2021\Rede 16 barras\rede16barras.txt"
@@ -132,6 +135,7 @@ function [b] = MatrizB(M,quantosLacos,qnt_coluna_MA_incidencia)
         //Matriz B parte imaginário da carga.
         b1(i)=(-1)*M(i+1,4);
     end
+    //Ajuste para casos onde o número de barras é maior que o número de ramos.
     if NB>NR then
         b=cat(1,b,zeros(M(1,3),1));
         b1=cat(1,b1,zeros(M(1,3),1));
@@ -151,48 +155,46 @@ function [b] = MatrizB(M,quantosLacos,qnt_coluna_MA_incidencia)
     
     //Complemento referente a barras inseridas de 'sobra' da rede tanto em real, quanto imaginário.
     if(NB==NR)// Fora necessário inserir esta comparação pois no caso da rede de 400barras, haviam na verdade 402 barras e 402 ramos, mas como 1 ramo era feeder e é considerado que neste caso seja inserido uma barra nova, a quantidade de barras e ramos era diferente, ou seja 403 barras e 402 ramos no total.
-        disp("NB==NR");
-        
-        b=b(1:NB)
-        
-        //Ajuste caso o número de barras for superior ao número de ramos para parte real
-        b=cat(1,b,zeros(M(1,3),1));
-        
-        b1=b1(1:NB)
-        b1=cat(1,b1,zeros(M(1,3),1));
-        
-        // Inserção das solicitações de carga para parte imaginária da rede.
+        // Ajuste de tamanho para matriz referente a Solicitação de Carga parte Real
+//        b=b(1:NB)
+//        // Ajuste caso o número de barras for superior ao número de ramos para parte Real
+//        b=cat(1,b,zeros(M(1,3),1));
+//        // Ajuste de tamanho para matriz referente a Solicitação de Carga parte Imaginária
+//        b1=b1(1:NB);
+//        // Ajuste caso o número de barras for superior ao número de ramos para parte Real
+//        b1=cat(1,b1,zeros(M(1,3),1));
+        // Junção da matriz Solicitação de carga partes Real e Imaginária.
         b=cat(1,b,b1);
-        //Ajuste caso o número de barras for superior ao número de ramos para parte imaginária
+//        pause
         // Inserção de restrições de laço pela lei de Kirchoff para a parte Real da rede.
-        b=cat(1,b,zeros(quantosLacos,1));
-
+        b=cat(1,b,zeros(2*qnt_coluna_MA_incidencia,1));
+//        b=cat(1,b,zeros(quantosLacos,1));
+//pause
 
         // Inserção de restrições de laço + desligamento de ramos pela lei de Kirchoff para a parte Imaginária da rede.
-        b=cat(1,b,zeros(size(b1,"r")+quantosLacos,1));
-
-elseif(NB<NR)
-    disp("NB<NR")
-    b=b(1:NB);
-    
-        // Inserção das solicitações de carga para parte imaginária da rede.
-        b1=b1(1:NB);
+//        b=cat(1,b,zeros(size(b1,"r")+quantosLacos,1));
+//        pause
+    b=cat(1,b,ones(quantosLacos,1));
+//    C:\Users\Higor\Documents\OtimizacaoDeRedes\ArquivosDeEntradaDeDados\FOCA
+//pause
+    elseif(NB<NR)
+        // Ajuste de tamanho para matriz referente a Solicitação de Carga parte Real e Imaginária
+        b=b(1:NB);// Real
+        b1=b1(1:NB);// Imaginária
+        // Junção da matriz Solicitação de carga partes Real e Imaginária.
         b=cat(1,b,b1);
-        
-        // Inserção de restrições de laço pela lei de Kirchoff para a parte Real da rede.
+        // Inserção de restrições para abrir ou fechar um determinado arco/ramo
         b=cat(1,b,zeros(2*qnt_coluna_MA_incidencia,1));//b=cat(1,b,zeros(NR,1));
-        
         // Inserção de restrições de laço  pela lei de Kirchoff para a parte Imaginária da rede.
         b=cat(1,b,ones(quantosLacos,1));//b=cat(1,b,zeros(M(1,3)+quantosLacos,1));
         
     else
-        disp("NB>NR")
+        // Ajuste de tamanho para matriz referente a Solicitação de Carga parte Real e Imaginária
         b=b(1:NB);
         b1=b1(1:NB);
 
         //Ajuste caso o número de barras for superior ao número de ramos para parte imaginária
         b=cat(1,b,zeros(M(1,3),1));
-
         // Inserção das solicitações de carga para parte imaginária da rede.
         b=cat(1,b,b1);
         
@@ -441,11 +443,11 @@ cs=[];
 //ci=(-5)*ones(size(C,"c"),1);
 //cs=ci*(-1);
 
-[x,iact,iter,fopt]=qpsolve(Q,p,C,b,ci,cs,qnt_coluna_MA)
+[xopt,iact,iter,fopt]=qpsolve(Q,p,C,b,ci,cs,qnt_coluna_MA)
 
-x=x(1:((2*(NR+M(1,3))+(size(LE,'r'))),1));
+xopt=xopt(1:((2*(NR+M(1,3))+(size(LE,'r'))),1));
 
-if x~=[]
+if xopt~=[]
     disp("Solução Ótima Encontrada!")
     disp(fopt,"O valor ótimo encontrado para a função objetivo.")
 else

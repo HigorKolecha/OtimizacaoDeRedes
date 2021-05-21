@@ -1,20 +1,29 @@
 //----------------------------------------------
 // Algorítimo OCF responsável pela otimização na
 // corrente injetada na rede distribuição.
-///
+// Projeto de Pesquisa FAPESP
+// Projeto número: #2019/24128-2
 // @date 01/07/2020
 // @author Higor de Paula Kolecha
 // @author Adolfo Blengini Neto
 // @author Marcius Fabius Henriques de Carvalho.
 // @version 1.0
 //----------------------------------------------
+
+// Responsável pela limpeza toda memória
 clear;
+// Responsável pela limpeza de tela
 clc;
+
+//Solicitação ao usuário do endereço para obtenção do arquivo de entrada.
+entradaDeDados=input("Digite o endereço com localização do arquivo de entrada de dados para a rede que deseja otimizar e resolver. Obs: seguir instruções no arquivo Guideline. ");
+
 // Arquivo de Entrada com a estrutura da Rede de Distribuição.
-M = fscanfMat("C:\Users\Higor\Desktop\rede5barras.txt", "%lg"); // Importa arquivo que apresenta os dados de entrada da rede. 
+M = fscanfMat(entradaDeDados, "%lg"); // Importa arquivo que apresenta os dados de entrada da rede. 
 
 //"C:\Users\Higor\Desktop\rede5barras.txt"
-//"C:\Users\Higor\Desktop\Iniciação científica\IC 2020 marcius scilab\Programação\11 barras v2\inputnelson.txt"
+//"C:\Users\Higor\Desktop\Iniciação científica\IC 2020 marcius scilab\Programação\11 barras v2\rede11barras.txt"
+//"C:\Users\Higor\Documents\OtimizacaoDeRedes\Arquivos de Entrada\FCCC\rede34barras2.txt"
 // Salva o número de ramos
 NR=M(1,1); 
 // Salva o número de barras
@@ -164,5 +173,5 @@ while (DeltaV >= e)
     DeltaV=DeltaV1-DeltaV2;//Declara o novo valor  de Delta
     
     norm(A*xopt-b)
-    pause
+//    pause
 end
