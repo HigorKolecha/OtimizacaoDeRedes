@@ -11,12 +11,16 @@
 // @version 1.2
 //----------------------------------------------
 
-//Limpa todas as informações que estavam em variáveis ante
+// Responsável pela limpeza toda memória.
 clear;
+// Responsável pela limpeza de tela.
 clc;
 
+//Solicitação ao usuário do endereço para obtenção do arquivo de entrada.
+entradaDeDados=input("Digite o endereço com localização do arquivo de entrada de dados. Obs: seguir instruções no arquivo Guideline. ");
+
 // Arquivo de Entrada com a estrutura da Rede de Distribuição.
-M = fscanfMat("C:\Users\Higor\Desktop\Iniciação científica\2021\Rede 5 barras\rede5barras.txt", "%lg"); // Importa arquivo que apresenta os dados de entrada da rede. 
+M = fscanfMat(entradaDeDados, "%lg"); // Importa arquivo que apresenta os dados de entrada da rede. 
 
 //"C:\Users\Higor\Desktop\Iniciação científica\2021\Rede 16 barras\rede16barras.txt"
 

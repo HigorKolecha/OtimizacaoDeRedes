@@ -16,7 +16,7 @@ clear;
 clc;
 
 //Solicitação ao usuário do endereço para obtenção do arquivo de entrada.
-entradaDeDados=input("Digite o endereço com localização do arquivo de entrada de dados para a rede que deseja otimizar e resolver. Obs: seguir instruções no arquivo Guideline. ");
+entradaDeDados=input("Digite o endereço com localização do arquivo de entrada de dados. Obs: seguir instruções no arquivo Guideline. ");
 
 // Arquivo de Entrada com a estrutura da Rede de Distribuição.
 M = fscanfMat(entradaDeDados, "%lg"); // Importa arquivo que apresenta os dados de entrada da rede. 
