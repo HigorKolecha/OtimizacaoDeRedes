@@ -191,7 +191,7 @@ function [C,qnt_coluna_MC_incidencia,qnt_coluna_MC] = MatrizC(M,LE,quantosLacos)
 
     //Inserção da matriz de laço junto à matriz incidência C.
     C=cat(1,C,LE);
-
+    // Inserção de novas colunas para que as restrições de laço funcionem
     C=cat(2,C,zeros(size(C,"r"),quantosLacos));
     
     //Valor responsável para a criação da matriz P futuramente.
