@@ -21,15 +21,6 @@ entradaDeDados=input("Digite o endereço: ");//com localização do arquivo de e
 // Arquivo de Entrada com a estrutura da Rede de Distribuição.
 M = fscanfMat(entradaDeDados, "%lg"); // Importa arquivo que apresenta os dados de entrada da rede. 
 
-//"C:\Users\Higor\Desktop\Iniciação científica\2021\Rede 5 barras\rede5barras.txt"
-//"C:\Users\Higor\Desktop\Iniciação científica\2021\Rede 16 barras\rede16barras.txt"
-//"C:\Users\Higor\Desktop\Iniciação científica\2021\Rede Nova\reduzida\rede28barras.txt" ------ rede reduzida
-
-//"C:\Users\Higor\Desktop\Iniciação científica\2021\Rede 34 barras\rede34barras.txt" -------- rede 34 barras dissertação Adolfo
-//"C:\Users\Higor\Desktop\Iniciação científica\2021\Rede 34 barras\rede34barrasAdmitancia.txt"
-//"C:\Users\Higor\Desktop\Iniciação científica\2021\400barras\rede400barras.txt"
-//"C:\Users\Higor\Desktop\Iniciação científica\2021\400barras\400barrasV2.txt" -------- rede 400 barras dissertação Adolfo
-
 // Salva o número de ramos
 NR=M(1,1);
 
