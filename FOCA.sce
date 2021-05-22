@@ -16,22 +16,23 @@ clear;
 clc;
 
 //Solicitação ao usuário do endereço para obtenção do arquivo de entrada.
-entradaDeDados=input("Digite o endereço: ");//com localização do arquivo de entrada de dados. Obs: seguir instruções no arquivo Guideline.
+entradaDeDados=input("Digite o endereço com localização do arquivo de entrada de dados. Obs: seguir instruções no arquivo Guideline. ");
 
 // Arquivo de Entrada com a estrutura da Rede de Distribuição.
 M = fscanfMat(entradaDeDados, "%lg"); // Importa arquivo que apresenta os dados de entrada da rede. 
-
 // Salva o número de ramos
 NR=M(1,1);
-
 // Salva o número de barras
 NB=M(1,2)+M(1,3); 
+// Valor de refencia de tensão inicial
+vf=1.0;
 
-// -----------------------------------------------------
-// Funcao responsável pela construçao do laço externo 
-// Entrada : Estrutura do arquivo completo 
-// Saida : Matriz de lacos externos
-// -----------------------------------------------------
+// --------------------------------------------------------------------
+// Funcao responsável pela construçao do laço externo.
+// Entrada : Estrutura do arquivo completo.
+// Saida : Matriz de lacos externos, informação de quantos laços foram
+// criados.
+// -------------------------------------------------------------------
 
 function [LE,quantosLacos]=lacosExternos(M)
     // Ajuste da variável M para retirada de informações gerais.
@@ -112,40 +113,43 @@ function [LE,quantosLacos]=lacosExternos(M)
     quantosLacos=size(LE,'r');
 endfunction
 
-//------------------------------------------------------
-// Criação matriz c
-// Matriz responsável pela criação dos caminhos da rede.
-//------------------------------------------------------
+// ---------------------------------------------------------------
+// Funcao responsavel pela construção da Matriz incidência C.
+// Entrada : Estrutura do arquivo completo e Matriz laços externos.
+// Saída : Matriz incidência C, informação de colunas para resolução
+// de caso real, informação de colunas para resolução de caso completo
+// de rede.
+//----------------------------------------------------------------
 
 function [C,qnt_coluna_MC_incidencia,qnt_coluna_MC] = MatrizC(M,LE,quantosLacos)
 
     AuxC=1;// Auxiliar para criação da matriz inciência de "carga", endereço da coluna.
     AuxG=1;// Auxiliar para criação da matriz inciência de "geração", endereço da coluna.
         
-    MAg=zeros(M(1,2),M(1,3)); //Criação de variáveis novas para descartar restrições de desigualdade.
+    MAg=zeros(M(1,2),M(1,3)); // Criação de variáveis novas para descartar restrições de desigualdade.
         
     for i=2:(NR+1)
-        //Orientação.
+        // Orientação.
         origem=M(i,1);
         destino=M(i,2);
     
-        //Parte real matriz incidencia (A).
+        // Parte real matriz incidencia (A).
         C(origem,AuxC)=1;
         C(destino,AuxC)=-1;
         
         AuxC=AuxC+1;
         
-        //Complemento da matriz incidencia (A) com as barras de geração.
+        // Complemento da matriz incidencia (A) com as barras de geração.
         if(M(i,7)==1)
             MAg(origem,AuxG)=1;
             AuxG=AuxG+1;
         end
     end
     
-    //Concatenação da Matriz indicencia com variáveis de folga.
+    // Concatenação da Matriz indicencia com variáveis de folga.
     C=cat(2,C,MAg);
     
-    //Criação da matriz que será responsável por receber quais ramos devem estar normalmente abertas ou fechadas.
+    // Criação da matriz que será responsável por receber quais ramos devem estar normalmente abertas ou fechadas.
     matrizRestricao=zeros(NB,size(C,"c"));
     
     // Estrutura de repetição responsável pela criação da matriz responsável pela identificação das linhas abertas, assim como ligar ou desligar ramos da rede
@@ -154,7 +158,7 @@ function [C,qnt_coluna_MC_incidencia,qnt_coluna_MC] = MatrizC(M,LE,quantosLacos)
             matrizRestricao(i-1,i-1)=1;
         end
     end
-    //Ajuste para inserção da variável de folga
+    // Ajuste para inserção da variável de folga
     matrizRestricao=cat(1,matrizRestricao,zeros(M(1,3),size(matrizRestricao,"c")));
 
     // Informação do tamanho da matriz incidência A. Definição para a quantidade de valores presentes na matriz Q.
@@ -171,22 +175,22 @@ function [C,qnt_coluna_MC_incidencia,qnt_coluna_MC] = MatrizC(M,LE,quantosLacos)
     // Esta concatenação é feita para que possam ser feita posteriormente a junção com a parte imaginária da rede.
     C=cat(2,C,C1);
     
-    //Junção da matriz incidecia real com a parte imaginária.
+    // Junção da matriz incidecia real com a parte imaginária.
     C=cat(1,C,C2);
     
-    //Ajuste para desligamento de ramo
+    // Ajuste para desligamento de ramo.
     C=cat(2,C,zeros(size(C,"r"),size(C,"c")));
 
     //Ajuste para concatenação das equações de laço junto à matriz incidência C.
     LE=cat(2,LE,zeros(size(LE,'r'),size(C,"c")-size(LE,'c')));
 
-    // Comando para junção vertical entre matrizes
+    // Junção de restrição para desligar ramos para partes Real e Imaginária.
     matrizRestricaoAux=matrizRestricao;
     matrizRestricao=cat(2,matrizRestricao,zeros(size(matrizRestricao,"r"),size(matrizRestricao,"c")));
     matrizRestricaoAux=cat(2,zeros(size(matrizRestricaoAux,"r"),size(matrizRestricaoAux,"c")),matrizRestricaoAux);
     matrizRestricao=cat(1,matrizRestricao,matrizRestricaoAux);
     matrizRestricao=cat(2,matrizRestricao,zeros(size(matrizRestricao,"r"),size(matrizRestricao,"c")));
-
+    // Junção da matriz Indicência com a matriz restrição.
     C=cat(1,C,matrizRestricao);
 
     //Inserção da matriz de laço junto à matriz incidência C.
@@ -198,10 +202,13 @@ function [C,qnt_coluna_MC_incidencia,qnt_coluna_MC] = MatrizC(M,LE,quantosLacos)
     qnt_coluna_MC=size(C,'c');
 endfunction
 
-//-----------------------
-// Criação matriz b.
-// Esta matriz é responsável pela definição das cargas e gerações da rede.
-//-----------------------
+// --------------------------------------------------------------------
+// Funcao responsavel pela contrução da Matriz de carga b.
+// Entrada: Estrutura do arquivo completo, informação de colunas para 
+// resolução de caso real, informação de colunas para resolução de caso
+// completo de rede.
+// Saída : Matriz de carga b.
+//---------------------------------------------------------------------
 
 function [b] = MatrizB(M,quantosLacos,qnt_coluna_MC_incidencia)
     // Criação da matriz B com todos valores negativos.
@@ -229,15 +236,14 @@ function [b] = MatrizB(M,quantosLacos,qnt_coluna_MC_incidencia)
             b1(origem)=b1(origem)*(-1);
         end
     end
-    
-    //Complemento referente a barras inseridas de 'sobra' da rede tanto em real, quanto imaginário.
-    if(NB==NR)// Fora necessário inserir esta comparação pois no caso da rede de 400barras, haviam na verdade 402 barras e 402 ramos, mas como 1 ramo era feeder e é considerado que neste caso seja inserido uma barra nova, a quantidade de barras e ramos era diferente, ou seja 403 barras e 402 ramos no total.
+    // Complemento referente a barras inseridas de folga e restrições de abertura/fechamento de ramos.
+    if(NB==NR) // Fora necessário inserir esta comparação pois no caso da rede de 400barras, haviam na verdade 402 barras e 402 ramos, mas como 1 ramo era feeder e é considerado que neste caso seja inserido uma barra nova, a quantidade de barras e ramos era diferente, ou seja 403 barras e 402 ramos no total.
         // Junção da matriz Solicitação de carga partes Real e Imaginária.
         b=cat(1,b,b1);
         // Inserção de restrições de laço pela lei de Kirchoff para a parte Real da rede.
         b=cat(1,b,zeros(2*(NR+M(1,3)),1));
-        // Inserção de restrições de laço + desligamento de ramos pela lei de Kirchoff para a parte Imaginária da rede.
-        b=cat(1,b,ones(quantosLacos,1));
+        // Inserção de tensão inicial de barra.
+        b=cat(1,b,vf*ones(quantosLacos,1));
     elseif(NB<NR)
         // Ajuste de tamanho para matriz referente a Solicitação de Carga parte Real e Imaginária
         b=b(1:NB);// Real
@@ -246,8 +252,8 @@ function [b] = MatrizB(M,quantosLacos,qnt_coluna_MC_incidencia)
         b=cat(1,b,b1);
         // Inserção de restrições para abrir ou fechar um determinado arco/ramo
         b=cat(1,b,zeros(2*(NR+M(1,3)),1));
-        // Inserção de restrições de laço  pela lei de Kirchoff para a parte Imaginária da rede.
-        b=cat(1,b,ones(quantosLacos,1));
+        // Inserção de tensão inicial de barra.
+        b=cat(1,b,vf*ones(quantosLacos,1));
     else
         // Ajuste de tamanho para matriz referente a Solicitação de Carga parte Real e Imaginária.
         b=b(1:NB);// Real.
@@ -261,26 +267,27 @@ function [b] = MatrizB(M,quantosLacos,qnt_coluna_MC_incidencia)
         b=cat(1,b,zeros(M(1,3),1));
         // Inserção de restrições de laço pela lei de Kirchoff para a parte Real da rede.
         b=cat(1,b,zeros(2*(NR+M(1,3)),1));        
-        // Inserção de restrições de laço  pela lei de Kirchoff para a parte Imaginária da rede.
-        b=cat(1,b,ones(quantosLacos,1));
+        // Inserção de tensão inicial de barra.
+        b=cat(1,b,vf*ones(quantosLacos,1));
     end
 endfunction
 
-//-----------------------
-//Criação matriz Q.
-//-----------------------
+//-------------------------------------------------------------------
+// Função responsável pela criação da matriz Q.
+// Entrada : Estrutura do arquivo completo, informação de colunas para
+// resolução de caso real, informação de colunas para resolução de caso
+// completo de rede.
+// Saída : Matriz simétrica para resistência e reatância Q.
+//-------------------------------------------------------------------
 
 function [Q]=MatrizQ(M,qnt_coluna_MC_incidencia,quantosLacos)
-    
-    AuxG=1;// Auxiliar para criação da matriz inciência de "geração", endereço da coluna.
 
     //Dimensionamento de tamanho para matriz Q.
     Q=zeros(NR,qnt_coluna_MC_incidencia);
     Q2=zeros(NR,qnt_coluna_MC_incidencia);
     Q3=zeros(NR,qnt_coluna_MC_incidencia);
     
-    //Criação da matriz simétrica para resistência e reatância de cada barra.
-    
+    // Criação da matriz simétrica para resistência e reatância de cada barra.
     for i=2:(NR+1)
         //Matriz simétrica para resistência.
         Q(i-1,i-1)=M(i,5);
@@ -332,9 +339,11 @@ function [Q]=MatrizQ(M,qnt_coluna_MC_incidencia,quantosLacos)
     Q=cat(1,Q,Q3);
 endfunction
 
-//-----------------------
-//Criação matriz p
-//-----------------------
+//----------------------------------------------------
+// Criação matriz p.
+// Entrada : Valor de colunas da matriz incidência A.
+// Saída : Matriz peso p.
+//----------------------------------------------------
 
 function [p]=MatrizP(qnt_coluna_MC)
     
@@ -346,9 +355,12 @@ function [p]=MatrizP(qnt_coluna_MC)
 
 endfunction
 
-//----------------------------------------------------------
-//Inserção de restrições para abertura e fechamento de ramos
-//----------------------------------------------------------
+//----------------------------------------------------------------
+// Função responável por inserção de restrições para abertura e 
+// fechamento de ramos.
+// Entrada : Matriz incidência C e Estrutura do arquivo completo.
+// Saída : Matriz incidência C  com restrições.
+//---------------------------------------------------------------
 
 function [C]=restricao(C,M)
     while 1>0 do
@@ -408,36 +420,46 @@ function [C]=restricao(C,M)
     end
 endfunction
 
-//Instrução para criação da matriz responsável pela criação dos laços externos da rede.
+// ------------------------------------------------
+// Estutura principal do Algoritimo para Otimização.
+// do fluxo de Corrente Alternada com Contingência.
+// ------------------------------------------------
+
+// Instrução para criação da matriz responsável pela criação dos laços externos da rede.
 [LE,quantosLacos]=lacosExternos(M);
 
-//Instrução para criação da matriz incidência A.
+// Instrução para criação da matriz incidência A.
 [C,qnt_coluna_MC_incidencia,qnt_coluna_MC]=MatrizC(M,LE,quantosLacos);
 
-//Instrução para criação da matriz incidência Q.
+// Instrução para criação da matriz incidência Q.
 [Q]=MatrizQ(M,qnt_coluna_MC_incidencia,quantosLacos);
 
-//Instrução para criação da matriz incidência P.
+// Instrução para criação da matriz incidência P.
 [p]=MatrizP(qnt_coluna_MC);
 
 //[C]=restricao(C,M);
 
-//Instrução para criação da matriz incidência B.
+// Instrução para criação da matriz incidência B.
 [b]=MatrizB(M,quantosLacos,qnt_coluna_MC_incidencia);
 
+// Limite inferior.
 ci=[];
+// Limite superior.
 cs=[];
 //ci=(-5)*ones(size(C,"c"),1);
 //cs=ci*(-1);
 
+// Função de otimização QPSOLVE - objetivo: Minimização de perdas na rede.
 [xopt,iact,iter,fopt]=qpsolve(Q,p,C,b,ci,cs,qnt_coluna_MC)
 
-xopt=xopt(1:((2*(NR+M(1,3))+(size(LE,'r'))),1));
-
+// Informação ao usuário da resolução da rede.
 if xopt~=[]
     disp("Solução Ótima Encontrada!")
     disp(fopt,"O valor ótimo encontrado para a função objetivo.")
 else
     disp("Solução não encontrada.")
 end
+
+// Variáveis de resolução de rede.
+xopt=xopt(1:((2*(NR+M(1,3))+(size(LE,'r'))),1));
 

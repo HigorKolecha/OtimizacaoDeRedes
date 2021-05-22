@@ -22,29 +22,14 @@ entradaDeDados=input("Digite o endereço com localização do arquivo de entrada
 // Arquivo de Entrada com a estrutura da Rede de Distribuição.
 M = fscanfMat(entradaDeDados, "%lg"); // Importa arquivo que apresenta os dados de entrada da rede. 
 
-//"C:\Users\Higor\Desktop\Iniciação científica\2021\Rede 16 barras\rede16barras.txt"
-
-//"C:\Users\Higor\Desktop\Iniciação científica\2021\Rede 5 barras\rede5barras.txt"
-
-//"C:\Users\Higor\Desktop\Iniciação científica\2021\Rede Nova\reduzida\rede28barras.txt" ------ rede reduzida
-
-//"C:\Users\Higor\Desktop\Iniciação científica\2021\Rede 34 barras\rede34barras.txt" -------- rede 34 barras dissertação Adolfo
-//"C:\Users\Higor\Desktop\Iniciação científica\2021\Rede 34 barras\rede34barrasAdmitancia.txt"
-
-//"C:\Users\Higor\Desktop\Iniciação científica\2021\400barras\400barrasV2.txt" -------- rede 400 barras dissertação Adolfo
-
 // Salva o número de ramos
 NR=M(1,1);
-
 // Salva o número de barras
 NB=M(1,2)+M(1,3); 
-
 //valor de refencia de tensão inicial real
 vf=1.02;
-
 //valor de refencia de tensão inicial imaginario
 vfi=0;
-
 //valor de convergencia
 e=0.0001;
 
@@ -54,26 +39,31 @@ e=0.0001;
 // Saida : Matriz de lacos externos
 // -----------------------------------------------------
 
-//-----------------------
-//Criação matriz c
-//-----------------------
+// ---------------------------------------------------------------
+// Funcao responsavel pela construção da Matriz incidência A.
+// Entrada : Estrutura do arquivo completo e Matriz laços externos.
+// Saída : Matriz incidência para restrição de igualdade Aeq
+// inequaldade A, informação de colunas para resolução de caso real,
+// informação de colunas para resolução de caso completo de rede.
+//----------------------------------------------------------------
+
 function [Aeq,qnt_coluna_MA_incidencia,qnt_coluna_MA,aux,A] = MatrizA(M,LE)
 
-    AuxC=1;// Auxiliar para criação da matriz inciência de "carga", endereço da coluna.
-    AuxG=1;// Auxiliar para criação da matriz inciência de "geração", endereço da coluna.
+    AuxC=1; // Auxiliar para criação da matriz incidência de "carga", endereço da coluna.
+    AuxG=1; // Auxiliar para criação da matriz incidência de "geração", endereço da coluna.
     aux=0;
     
-    MAg=zeros(M(1,2),M(1,3)); //Criação de vaiáveis novas para descartar restrições de desigualdade.
+    MAg=zeros(M(1,2),M(1,3)); // Criação de vaiáveis novas para descartar restrições de desigualdade.
         
     for i=2:(NR+1)
-        //Orientação.
+        // Orientação.
         origem=M(i,1);
         destino=M(i,2);
     
-        //Parte real matriz incidencia (A).
+        // Parte real matriz incidencia (A).
         Aeq(origem,AuxC)=1;
         Aeq(destino,AuxC)=-1;
-        
+        // Atualização da variável auxiliar
         AuxC=AuxC+1;
         
         //Complemento da matriz incidencia (A) com as barras de geração.
@@ -265,70 +255,52 @@ function [Q]=MatrizH(M,qnt_coluna_MA_incidencia,aux,LE)
 
 endfunction
 
-//-----------------------
-//Criação matriz p
-//-----------------------
+//----------------------------------------------------
+// Função responsável pela criação matriz da f.
+// Entrada : Valor de colunas da matriz incidência A.
+// Saída : Matriz f.
+//----------------------------------------------------
 function [f]=MatrizF(qnt_coluna_MA)
-    
-    //Dimensão desta matriz deve ser igual a quantidade de colunas da matriz incidência A.
-
+    // Matriz de coeficientes dos termos lineares no problema quadrático.
     for i=1:qnt_coluna_MA
         f(i,1)=0;
     end
-    
 endfunction
+
+//----------------------------------------------------------------
+// Função responável por inserção de restrições para abertura e 
+// fechamento de ramos.
+// Entrada : Matriz incidência C e Estrutura do arquivo completo.
+// Saída : Matriz incidência C  com restrições.
+//---------------------------------------------------------------
 
 function [C]=restricao(C,M)
     while 1>0 do
+        // Comunicação ao usuário.
         restricao=input("Digite o ramo com Defeito Falha: ");
+        // Verificação de possibilidade de existir o Defeito Falha informado.
         if(restricao>NB)
             disp("Você digitou um valor inválido");
         elseif(restricao~=0)
-            C(NB+restricao,restricao)=1;
-            C(3*NB+resticao,NB+restricao)=1;
+            // Inserção de valor 1 para iniciar uma restrição capaz de desligar o ramo informado tanto para parte real quanto imaginária.
+            C(2*NB+M(1,3)+restricao,M(1,3)+restricao)=1;
+            C(2*NB+NR+(M(1,3)+restricao,NR+restricao+M(1,3)))=1;
+            disp(2*NB+M(1,3)+NR+restricao,NR+restricao+M(1,3));
         elseif(restricao==0)
-            continue;
-        end
-        
-        on_off=input("Deseja ligar alguma linha? 1 para sim, 0 para não. ")
-        if(on_off==1)
-            disp("As opções são:");
-            for i=1:NR
-                if(M(i+1,8)==1)
-                    a=M(i+1,1);
-                    b=M(i+1,2);
-                    c="-";
-                    disp("Origem Destino - Número da linha");
-                    disp(a, b, c, i);
-                end
-            end
-            while 1>0
-                ligar=input("Quais linhas que deseja ligar? Quando já colocou todas suas opções, digite 0. ");
-                if(ligar==0)
-                    break;
-                elseif(ligar>NR)
-                    disp("Você digitou um valor inválido")
-                else
-                    C(NB+ligar,ligar)=0;
-                    C(3*NB+ligar,NB+ligar+M(1,3))=0;
-                end
-            end
-        break;
-        elseif(on_off==0)
-            break;
-        else
-            disp("Você não digitou um valor válido.");
+            disp("Você digitou um valor inválido");
         end
     end
 endfunction
 
+// --------------------------------------------------------------------
+// Funcao responsável pela construçao do laço externo.
+// Entrada : Estrutura do arquivo completo.
+// Saida : Matriz de lacos externos, informação de quantos laços foram
+// criados.
+// -------------------------------------------------------------------
+
 function [LE,quantosLacos]=lacosExternos(M)
     mAux=M(2:NR+1,1:size(M,'c'));
-    // -----------------------------------------------------
-    // Funcao responsável pela construçao do laço externo 
-    // Entrada : Estrutura do arquivo completo 
-    // Saida : Matriz de lacos externos
-    // -----------------------------------------------------
     
     O=mAux(:,1);// Criação do vetor origem.
     D=mAux(:,2);// Criação do vetor destino.
@@ -421,10 +393,14 @@ function [LE,quantosLacos]=lacosExternos(M)
     quantosLacos=size(LE,'r');
 endfunction
 
+// ------------------------------------------------
+// Estutura principal do Algoritimo para Otimização.
+// do fluxo de Corrente Alternada com Contingência.
+// ------------------------------------------------
+
 //Instrução para criação da matriz responsável pela criação dos laços externos da rede.
 [LE,quantosLacos]=lacosExternos(M);
-//LE=[];
-//quantosLacos=[];
+
 //Instrução para criação da matriz incidência A.
 [Aeq,qnt_coluna_MA_incidencia,qnt_coluna_MA,aux,A]=MatrizA(M,LE);
 
