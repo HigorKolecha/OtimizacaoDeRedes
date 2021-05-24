@@ -17,10 +17,12 @@ clear;
 clc;
 
 //Solicitação ao usuário do endereço para obtenção do arquivo de entrada.
-entradaDeDados=input("Digite o endereço com localização do arquivo de entrada de dados. Obs: seguir instruções no arquivo Guideline. ");
+//entradaDeDados=input("Digite o endereço com localização do arquivo de entrada de dados. Obs: seguir instruções no arquivo Guideline. ");
 
 // Arquivo de Entrada com a estrutura da Rede de Distribuição.
-M = fscanfMat(entradaDeDados, "%lg"); // Importa arquivo que apresenta os dados de entrada da rede. 
+//M = fscanfMat(entradaDeDados, "%lg"); // Importa arquivo que apresenta os dados de entrada da rede. 
+
+M = fscanfMat("C:\Users\Higor\Desktop\Iniciação científica\2021\Rede 5 barras\rede5barras.txt", "%lg");
 
 // Salva o número de ramos
 NR=M(1,1);
@@ -47,7 +49,7 @@ e=0.0001;
 // informação de colunas para resolução de caso completo de rede.
 //----------------------------------------------------------------
 
-function [Aeq,qnt_coluna_MA_incidencia,qnt_coluna_MA,aux,A] = MatrizA(M,LE)
+function [Aeq,qnt_coluna_MA_incidencia,qnt_coluna_MA,aux,A,barraDefeitoFalha] = MatrizA(M,LE)
 
     AuxC=1; // Auxiliar para criação da matriz incidência de "carga", endereço da coluna.
     AuxG=1; // Auxiliar para criação da matriz incidência de "geração", endereço da coluna.
@@ -102,11 +104,18 @@ function [Aeq,qnt_coluna_MA_incidencia,qnt_coluna_MA,aux,A] = MatrizA(M,LE)
     A3=zeros(1,(size(Aeq,'c')-aux));
     A4=ones(1,aux);
     A3=cat(2,A3,A4);
+
     Aeq=cat(1,Aeq,A3);
 
     //Teste desligamento barra real
     desligamento=zeros(1,size(Aeq,"c"));
-    desligamento(1,9)=1;
+    barraDefeitoFalha=restricao(M);
+    if barraDefeitoFalha==0 then
+        continue;
+    else
+        desligamento(1,barraDefeitoFalha)=1;
+    end
+//    pause
     Aeq=cat(1,Aeq,desligamento);
     //-------------------------------
 
@@ -155,7 +164,7 @@ endfunction
 //-----------------------
 //Criação matriz b
 //-----------------------
-function [beq,b] = MatrizB(M,quantosLacos,C,LE)
+function [beq,b] = MatrizB(M,quantosLacos,C,LE,barraDefeitoFalha)
     //Criação da matriz B com todos valores negativos.
     for i=1:NB
         //Matriz b real carga.
@@ -176,81 +185,103 @@ function [beq,b] = MatrizB(M,quantosLacos,C,LE)
             b1(origem)=b1(origem)*(-1);
         end
     end
-    
-    beq(NB+1,1)=1;
-    
-    //Teste desligamento barra 5 real
-    beq=cat(1,beq,zeros(1,1));
-    //-------------------------------
-
-    beq=cat(1,beq,b1);
-    
-    beq(2*(NB+1)+1,1)=1;
-    
-    //Teste desligamento barra 5 real
-    beq=cat(1,beq,zeros(1,1));
-    //-------------------------------
-//pause
-    //Inserção de zeros referente a tensão das equações de laço real
-    beq=cat(1,beq,zeros(size(LE,"r"),1));
-    //--------------------------------------------------------------
-
+    if barraDefeitoFalha==0 then
+        // Ajuste de tamanho para matriz de carga Real.
+        beq=beq(1:NB);
+        // Restrição de inteiro para Real.
+        beq=cat(1,beq,zeros(1,1));
+        // Restrição para desligamento de barra Real
+        beq=cat(1,beq,zeros(1,1));
+        // Ajuste de tamanho para matriz de carga Imaginário.
+        b1=b1(1:NB);
+        // Junção matriz de carga beq Real com restrições, com Imaginário.
+        beq=cat(1,beq,b1);
+        // Restrição de inteiro para Imaginário.
+        beq=cat(1,beq,zeros(1,1));
+        // Restrição para desligamento de barra Imaginário.
+        beq=cat(1,beq,zeros(1,1));
+        //Inserção de zeros referente a tensão das equações de laço Real e Imaginário.
+        beq=cat(1,beq,zeros(size(LE,"r"),1));
+    else
+        // Ajuste de tamanho para matriz de carga Real.
+        beq=beq(1:NB);
+        // Restrição de inteiro para Real.
+        beq=cat(1,beq,ones(1,1));
+        // Restrição para desligamento de barra Real
+        beq=cat(1,beq,zeros(1,1));
+        // Ajuste de tamanho para matriz de carga Imaginário.
+        b1=b1(1:NB);
+        // Junção matriz de carga beq Real com restrições, com Imaginário.
+        beq=cat(1,beq,b1);
+        // Restrição de inteiro para Imaginário.
+        beq=cat(1,beq,ones(1,1));
+        // Restrição para desligamento de barra Imaginário.
+        beq=cat(1,beq,zeros(1,1));
+        //Inserção de zeros referente a tensão das equações de laço Real e Imaginário.
+        beq=cat(1,beq,zeros(size(LE,"r"),1));
+    end
+    // Criação da matriz de restrições para inequações (<=) da rede.
     b=zeros(size(C,'r'),1);
 endfunction
 
-function [Q]=MatrizH(M,qnt_coluna_MA_incidencia,aux,LE)
-//-----------------------
-//Criação matriz Q.
-//-----------------------
+//-------------------------------------------------------------------
+// Função responsável pela criação da matriz H.
+// Entrada : Estrutura do arquivo completo, informação de colunas para
+// resolução de caso real, informação de colunas para resolução de caso
+// completo de rede.
+// Saída : Matriz simétrica para resistência e reatância H.
+//-------------------------------------------------------------------
+
+function [H]=MatrizH(M,qnt_coluna_MA_incidencia,aux,LE)
     
     AuxG=1;// Auxiliar para criação da matriz inciência de "geração", endereço da coluna.
 
     //Dimensionamento de tamanho para matriz Q.
-    Q=zeros(NR,qnt_coluna_MA_incidencia);
-    Q2=zeros(NR,qnt_coluna_MA_incidencia);
-    Q3=zeros(NR,qnt_coluna_MA_incidencia);
+    H=zeros(NR,qnt_coluna_MA_incidencia);
+    H2=zeros(NR,qnt_coluna_MA_incidencia);
+    H3=zeros(NR,qnt_coluna_MA_incidencia);
     
     //Criação da matriz simétrica para resistência e reatância de cada barra.
     for i=2:(NR+1)
         //Matriz simétrica para resistência.
-        Q(i-1,i-1)=M(i,5);
+        H(i-1,i-1)=M(i,5);
         
         //Matriz simétrica para reatância.
-        Q2(i-1,i-1)=M(i,6);
+        H2(i-1,i-1)=M(i,6);
     end
     
     //Criação de complemento que será responsável pela resistência e impedância das as barras de geração.
-    AuxQ=0.0000001*eye(M(1,3),M(1,3));
+    AuxH=0.0000001*eye(M(1,3),M(1,3));
     
     //Responsável pela criação de uma matriz complementar, responsável para ordenar e possibilitar a concatenação posteriormente (inserir as variáveis responsáveis pela variável de folga).
-    Q1=zeros(M(1,3),NR);
+    H1=zeros(M(1,3),NR);
     
     //Concatenação para que seja possível incrementar as variáveis com baixa resistencia.
-    Q1=cat(2,Q1,AuxQ);
+    H1=cat(2,H1,AuxH);
     
     //acrescentado para inteiro
-    Q1=cat(2,Q1,zeros(M(1,3),aux));
-    Q=cat(1,Q,Q1); //Real.
-    Q6=zeros(aux,size(Q,'r'));
-    Q6=cat(2,Q6,eye(aux,aux));
-    Q=cat(1,Q,Q6);
+    H1=cat(2,H1,zeros(M(1,3),aux));
+    H=cat(1,H,H1); //Real.
+    H6=zeros(aux,size(H,'r'));
+    H6=cat(2,H6,eye(aux,aux));
+    H=cat(1,H,H6);
     
     //imag
-    Q1=cat(2,Q1,zeros(1,size(Q2,'c')-size(Q1,'c')))
-    Q2=cat(1,Q2,Q1); //Real.
-    Q6=zeros(aux,size(Q2,'r'));
-    Q6=cat(2,Q6,eye(aux,aux));
-    Q2=cat(1,Q2,Q6);
+    H1=cat(2,H1,zeros(1,size(H2,'c')-size(H1,'c')))
+    H2=cat(1,H2,H1); //Real.
+    H6=zeros(aux,size(H2,'r'));
+    H6=cat(2,H6,eye(aux,aux));
+    H2=cat(1,H2,H6);
 
     //junção real e imag
-    Q=cat(2,Q,zeros(size(Q,'r'),size(Q,'r')));
-    Q2=cat(2,zeros(size(Q2,'r'),size(Q2,'r')),Q2);
-    Q=cat(1,Q,Q2);
+    H=cat(2,H,zeros(size(H,'r'),size(H,'r')));
+    H2=cat(2,zeros(size(H2,'r'),size(H2,'r')),H2);
+    H=cat(1,H,H2);
     //------------------
 
     //variaveis a mais
-    Q=cat(2,Q,zeros(size(Q,"r"),size(LE,"r")));
-    Q=cat(1,Q,zeros(size(LE,"r"),size(Q,"c")));
+    H=cat(2,H,zeros(size(H,"r"),size(LE,"r")));
+    H=cat(1,H,zeros(size(LE,"r"),size(H,"c")));
     //----------------
 
 endfunction
@@ -260,6 +291,7 @@ endfunction
 // Entrada : Valor de colunas da matriz incidência A.
 // Saída : Matriz f.
 //----------------------------------------------------
+
 function [f]=MatrizF(qnt_coluna_MA)
     // Matriz de coeficientes dos termos lineares no problema quadrático.
     for i=1:qnt_coluna_MA
@@ -274,20 +306,25 @@ endfunction
 // Saída : Matriz incidência C  com restrições.
 //---------------------------------------------------------------
 
-function [C]=restricao(C,M)
+function [barraDefeitoFalha]=restricao(M)
     while 1>0 do
         // Comunicação ao usuário.
-        restricao=input("Digite o ramo com Defeito Falha: ");
-        // Verificação de possibilidade de existir o Defeito Falha informado.
-        if(restricao>NB)
-            disp("Você digitou um valor inválido");
-        elseif(restricao~=0)
-            // Inserção de valor 1 para iniciar uma restrição capaz de desligar o ramo informado tanto para parte real quanto imaginária.
-            C(2*NB+M(1,3)+restricao,M(1,3)+restricao)=1;
-            C(2*NB+NR+(M(1,3)+restricao,NR+restricao+M(1,3)))=1;
-            disp(2*NB+M(1,3)+NR+restricao,NR+restricao+M(1,3));
-        elseif(restricao==0)
-            disp("Você digitou um valor inválido");
+        disp("Houve um Defeito Falha em algum ramo?");
+        algumRamoFalhou=input("Digita 1 (um) para sim ou 0 (zero) para não. ");
+        if algumRamoFalhou==1
+            barraDefeitoFalha=input("Digite o ramo com Defeito Falha: ");
+            // Verificação de possibilidade de existir o Defeito Falha informado.
+            if(barraDefeitoFalha>NB)
+                disp("Você digitou um valor inválido");
+            elseif(barraDefeitoFalha~=0)
+                // Inserção de valor 1 para iniciar uma restrição capaz de desligar o ramo informado tanto para parte real quanto imaginária.
+                break;
+            else
+                disp("Você digitou um valor inválido");
+            end
+        else
+            barraDefeitoFalha=0;
+            break;
         end
     end
 endfunction
@@ -398,31 +435,37 @@ endfunction
 // do fluxo de Corrente Alternada com Contingência.
 // ------------------------------------------------
 
-//Instrução para criação da matriz responsável pela criação dos laços externos da rede.
+// Instrução para criação da matriz responsável pela criação dos laços externos da rede.
 [LE,quantosLacos]=lacosExternos(M);
 
-//Instrução para criação da matriz incidência A.
-[Aeq,qnt_coluna_MA_incidencia,qnt_coluna_MA,aux,A]=MatrizA(M,LE);
+// Instrução para criação da matriz incidência A.
+[Aeq,qnt_coluna_MA_incidencia,qnt_coluna_MA,aux,A,barraDefeitoFalha]=MatrizA(M,LE);
 
-//Instrução para criação da matriz incidência Q.
+// Instrução para criação da matriz incidência Q.
 [H]=MatrizH(M,qnt_coluna_MA_incidencia,aux);
 
-//Instrução para criação da matriz incidência P.
+// Instrução para criação da matriz incidência P.
 [f]=MatrizF(qnt_coluna_MA);
 
-//[C]=restricao(C,M);
+// Instrução para criação da matriz incidência B.
+[beq,b]=MatrizB(M,quantosLacos,A,LE,barraDefeitoFalha);
 
-//Instrução para criação da matriz incidência B.
-[beq,b]=MatrizB(M,quantosLacos,A);
-
-intcon=[9,10,19,20];
-//intcon=[9,10];
+// Definição das variáveis inteiras/binárias da rede.
+// Encontrar as variáveis inteiras/binárias reais da rede.
+intconReal=find(Aeq(NB+1,:)==1);
+// Encontrar as variáveis inteiras/binárias imaginárias da rede.
+intconImaginario=find(Aeq(2*(NB+1)+1,:)==1);
+// Junção das variáveis inteiras/binárias reais e imaginárias da rede.
+// As variáveis reais e imaginárias da rede serão as mesmas, apenas deslocadas umas das outras.
+intcon=cat(2,intconReal,intconImaginario);
 
 //intcon=[28,29,30,31,32,33,34,35];
 //intcon=[28,29,30,31,32,33,34,35,63,64,65,66,67,68,69,70];
 
+// Função de otimização FOT_INTQUADPROG - objetivo: Minimização de perdas na rede com opções de manobra.
 [xopt,fopt,exitflag,output]=fot_intquadprog(H,f,intcon,A,b,Aeq,beq)
 
+// Comunicação ao usuário sobre os resultados obtidos com a função de otimização.
 if exitflag == 0 then
     disp("Solução Ótima Encontrada!")
     disp(fopt,"O valor ótimo encontrado para a função objetivo.")

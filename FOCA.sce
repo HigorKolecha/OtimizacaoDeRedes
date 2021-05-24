@@ -366,7 +366,7 @@ function [C]=restricao(C,M)
     while 1>0 do
         // Comunicação ao usuário.
         disp("Houve um Defeito Falha em algum ramo?");
-        algumRamoFalhou=input("Digita 1 (um) para sim ou 0 (zero) para não. ")
+        algumRamoFalhou=input("Digita 1 (um) para sim ou 0 (zero) para não. ");
         // Verificação se houve Defeito Falha
         if algumRamoFalhou==0
             break;
