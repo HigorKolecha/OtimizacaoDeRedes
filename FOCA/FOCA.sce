@@ -24,8 +24,10 @@ M = fscanfMat(entradaDeDados, "%lg"); // Importa arquivo que apresenta os dados 
 NR=M(1,1);
 // Salva o número de barras
 NB=M(1,2)+M(1,3); 
-// Valor de refencia de tensão inicial
+// Valor de refencia de tensão inicial Real
 vf=1.0;
+// Valor de refencia de tensão inicial Imaginário
+vfi=0;
 
 // --------------------------------------------------------------------
 // Funcao responsável pela construçao do laço externo.
@@ -34,7 +36,7 @@ vf=1.0;
 // criados.
 // -------------------------------------------------------------------
 
-function [LE,quantosLacos]=lacosExternos(M)
+function [LE,quantosLacos,barraLaco,barraLacoImag]=lacosExternos(M)
     // Ajuste da variável M para retirada de informações gerais.
     mAux=M(2:NR+1,1:size(M,'c'));
     // Criação de vetores auxiliares
@@ -96,7 +98,7 @@ function [LE,quantosLacos]=lacosExternos(M)
     // Criação da matriz auxiliar.
     quaisLacos2=quaisLacos;
     // Junção das informações de quais barras geraram laço para parte real e imaginária.
-    barraLaco=cat(1,barraLaco,barraLacoImag);
+//    barraLaco=cat(1,barraLaco,barraLacoImag);
     // Junção de laços reais e imaginários
     quaisLacos=cat(2,quaisLacos,quaisLacosImag);
     // Junção dos laços para calculo de tensão imaginária
@@ -210,7 +212,7 @@ endfunction
 // Saída : Matriz de carga b.
 //---------------------------------------------------------------------
 
-function [b] = MatrizB(M,quantosLacos,qnt_coluna_MC_incidencia)
+function [b] = MatrizB(M,quantosLacos,qnt_coluna_MC_incidencia,barraLaco,barraLacoImag)
     // Criação da matriz B com todos valores negativos.
     for i=1:NR
         // Matriz b parte real da carga.
@@ -243,7 +245,8 @@ function [b] = MatrizB(M,quantosLacos,qnt_coluna_MC_incidencia)
         // Inserção de restrições de laço pela lei de Kirchoff para a parte Real da rede.
         b=cat(1,b,zeros(2*(NR+M(1,3)),1));
         // Inserção de tensão inicial de barra.
-        b=cat(1,b,vf*ones(quantosLacos,1));
+        b=cat(1,b,vf*ones(size(barraLaco,"r"),1));
+        b=cat(1,b,vfi*ones(size(barraLacoImag,"r"),1));
     elseif(NB<NR)
         // Ajuste de tamanho para matriz referente a Solicitação de Carga parte Real e Imaginária
         b=b(1:NB);// Real
@@ -253,7 +256,8 @@ function [b] = MatrizB(M,quantosLacos,qnt_coluna_MC_incidencia)
         // Inserção de restrições para abrir ou fechar um determinado arco/ramo
         b=cat(1,b,zeros(2*(NR+M(1,3)),1));
         // Inserção de tensão inicial de barra.
-        b=cat(1,b,vf*ones(quantosLacos,1));
+        b=cat(1,b,vf*ones(size(barraLaco,"r"),1));
+        b=cat(1,b,vfi*ones(size(barraLacoImag,"r"),1));
     else
         // Ajuste de tamanho para matriz referente a Solicitação de Carga parte Real e Imaginária.
         b=b(1:NB);// Real.
@@ -268,7 +272,8 @@ function [b] = MatrizB(M,quantosLacos,qnt_coluna_MC_incidencia)
         // Inserção de restrições de laço pela lei de Kirchoff para a parte Real da rede.
         b=cat(1,b,zeros(2*(NR+M(1,3)),1));        
         // Inserção de tensão inicial de barra.
-        b=cat(1,b,vf*ones(quantosLacos,1));
+        b=cat(1,b,vf*ones(size(barraLaco,"r"),1));
+        b=cat(1,b,vfi*ones(size(barraLacoImag,"r"),1));
     end
 endfunction
 
@@ -440,7 +445,7 @@ endfunction
 //[C]=restricao(C,M);
 
 // Instrução para criação da matriz incidência B.
-[b]=MatrizB(M,quantosLacos,qnt_coluna_MC_incidencia);
+[b]=MatrizB(M,quantosLacos,qnt_coluna_MC_incidencia,barraLaco,barraLacoImag);
 
 // Limite inferior.
 ci=[];
