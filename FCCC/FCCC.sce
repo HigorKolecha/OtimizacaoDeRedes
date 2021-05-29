@@ -16,10 +16,12 @@ clear;
 clc;
 
 // Solicitação ao usuário do endereço para obtenção do arquivo de entrada.
-entradaDeDados=input("Digite o endereço com localização do arquivo de entrada de dados. Obs: seguir instruções no arquivo Guideline. ");
+//entradaDeDados=input("Digite o endereço com localização do arquivo de entrada de dados. Obs: seguir instruções no arquivo Guideline. ");
 
 // Arquivo de Entrada com a estrutura da Rede de Distribuição.
-M = fscanfMat(entradaDeDados, "%lg"); // Importa arquivo que apresenta os dados de entrada da rede. 
+M = fscanfMat("C:\Users\Higor\Documents\OtimizacaoDeRedes\FCCC\rede34barras2.txt", "%lg"); // Importa arquivo que apresenta os dados de entrada da rede.
+
+//"C:\Users\Higor\Documents\OtimizacaoDeRedes\rede34barras2.txt"
 
 // Salva o número de ramos
 NR=M(1,1); 
@@ -64,6 +66,7 @@ function [quaislacos, barralaco]=lacoE(M)
     l = size(quaislacos,"c")// Mede o tamanho da matriz quaislaacos
     complemento = eye(l,l);
     quaislacos = cat(1,quaislacos, complemento); // Faz a concatenação da matriz quais lacos com a matriz complemento
+    quaislacos = quaislacos'; // Matriz de laço transposta.
 endfunction //Fim da função de criação de laços
 
 // ---------------------------------------------------------------
@@ -79,6 +82,7 @@ function MA=MatrizA(M, LE)
     MA=zeros(NB,NR+n);
     // Determinação da barra de geração, neste caso a barra 1 está recebendo a carga.
     MA(1,1)=1;
+    
     //Estrutura de repetição para criação da matriz incidência MA.
     for i=2:NR
         //CRIAR A MATRIZ A .
@@ -89,6 +93,16 @@ function MA=MatrizA(M, LE)
         MA(origem,i)=-1;
         MA(destino,i)=1;
     end
+//    matrizDesligamento=zeros(size(MA,"r"),size(MA,"c"));
+//    for i=1:NR
+//        if (M(i,8)==1)
+//            matrizDesligamento(i,i)=1;
+//        end
+//    end
+//    MA=cat(1,MA,matrizDesligamento);
+    MA=cat(1,MA,LE);
+//    MA=cat(2,MA,zeros(size(MA,"r"),size(MA,"r")-size(MA,"c")));
+//    pause
 endfunction
 
 // --------------------------------------------------------------------
@@ -101,6 +115,9 @@ endfunction
 
 function MB=MatrizB(M, LE, vf, vi, buss, b)
     MB=b;
+//    if b==[] then
+//        MB=zeros(NB,1);
+//    end
     for i=1:size(buss,"r")
         // CRIAR MATRIZ b a partir das informações obtidas pela matriz Buss.
         aux = buss(i,1); 
@@ -110,11 +127,13 @@ function MB=MatrizB(M, LE, vf, vi, buss, b)
         // Parte real atualizada da matriz igualdade b.
         MB(aux)=cu;
     end
+    
     // Inserção do valor de referencia para tensão em cada laço.
     n = size(LE,"r")
     for i=1:n
        MB(i+NB)=vf; 
     end
+
 endfunction
 
 // ----------------------------------------------------------------
@@ -133,6 +152,7 @@ function c=MatrizC(M, LE)
             c(i,1)=1;
         end
     end
+
 endfunction
 
 // ------------------------------------------------
@@ -141,11 +161,10 @@ endfunction
 // ------------------------------------------------
 
 [LE,buss]=lacoE(M); // Chama a função para criação de laços do circuito.
-LE = LE'; // Matriz de laço transposta.
 A=MatrizA(M,LE); // Chama a função para crianção da matriz A.
 c=MatrizC(M,LE); // Chama a função para crianção da matriz c.
 
-A=cat(1,A,LE); // Faz a concatenação da Matriz A com a Matriz de laços.
+//A=cat(1,A,LE); // Faz a concatenação da Matriz A com a Matriz de laços.
 
 DeltaV=e; // Condição inicial de DeltaV.
 n = size(LE,"r"); // Determinação da quantiade de laços criados.
@@ -155,6 +174,14 @@ xopt=n; // Determinação inicial de qualquer valor.
 // Determinação de valores iniciais.
 DeltaV2=0;
 b=[];
+
+//lb=(-5)*ones(size(A,"c"),1);
+//ub=5*ones(size(A,"c"),1);
+lb=[];
+ub=[];
+//x0=zeros(size(A,"c"),1);
+x0=[];
+
 // Estrutura de repetição a fim de chegar em convergencia
 while (DeltaV >= e)
     // Função para atualização e criação da matrizB
@@ -164,7 +191,7 @@ while (DeltaV >= e)
 
     // Função de otimização KARMARKAR - objetivo: Minimizar IR no FEEDER
     // Minimize x0 + x12 + x13 + x23 ...Xij
-    [xopt,fopt,exitflag,iter,yopt]=karmarkar(A,b,c); 
+    [xopt,fopt,exitflag,iter,yopt]=karmarkar(A,b,c,x0,[],[],[],[],[],[],lb,ub); 
     yopt.ineqlin
     yopt.lower 
     // Atualização dos valores de tensão caso a função ache uma otimização.
