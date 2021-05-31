@@ -1,41 +1,32 @@
-//----------------------------------------------
-// Algorítimo OCF responsável pela otimização na
-// corrente injetada na rede distribuição.
-// Projeto de Pesquisa FAPESP
-// Projeto número: #2019/24128-2
-// @date 01/07/2020
-// @author Higor de Paula Kolecha
-// @author Adolfo Blengini Neto
+//-----------------------------------------------
+// Algorítimo FOCA responsável pela otimização na
+// corrente injetada na rede distribuição com con-
+// trole de tensão.
+// Projeto de Pesquisa FAPESP.
+// Projeto número: #2019/24128-2.
+// @date 01/07/2020.
+// @author Higor de Paula Kolecha.
+// @author Adolfo Blengini Neto.
 // @author Marcius Fabius Henriques de Carvalho.
 // @version 1.0
-//----------------------------------------------
+//-----------------------------------------------
 
 // Responsável pela limpeza toda memória
 clear;
 // Responsável pela limpeza de tela
 clc;
 
-//Solicitação ao usuário do endereço para obtenção do arquivo de entrada.
-M = fscanfMat("C:\Users\Higor\Desktop\rede400barras.txt", "%lg"); // Importa arquivo que apresenta os dados de entrada da rede. 
+// Solicitação ao usuário do endereço para obtenção do arquivo de entrada.
+entradaDeDados=input("Digite o endereço com localização do arquivo de entrada de dados. Obs: seguir instruções no arquivo Guideline. ");
 
-//temNovaGeracao=input("Fora inserida alguma geração a mais na rede? Digite 1 para sim, 0 para não. ");
-//
-//qualBarra=input("Qual barra está recebendo a nova fonte? ");
-//geracaoAtiva=input("Quanto ela gera de potência ativa? ");
-//geracaoReativa=input("Quanto ela gera de potência reativa? ");
-//resitenciaRamo=input("Qual a resistencia a ser considerada. obs:~=0. ");
-//reatanciaRamo=input("Qual a reatancia a ser considerada. obs:~=0. ");
-//novaLinha=[0 qualBarra geracaoAtiva geracaoReativa resitenciaRamo reatanciaRamo 1 0 0];
-//M=cat(1,M,novaLinha);
-//M(1,1)=M(1,1)+1;
-//pause
-
-//"C:\Users\Higor\Desktop\Iniciação científica\2021\Rede 34 barras\rede34barras.txt"
-//"C:\Users\Higor\Desktop\rede16barras.txt"
-//"C:\Users\Higor\Desktop\rede5barras.txt"
 // Arquivo de Entrada com a estrutura da Rede de Distribuição.
-//M = fscanfMat(entradaDeDados, "%lg"); // Importa arquivo que apresenta os dados de entrada da rede.
+M = fscanfMat(entradaDeDados, "%lg"); // Importa arquivo que apresenta os dados de entrada da rede. 
 
+// Inicio de contagem de timer para tempo de resolução da rede.
+tic();
+
+// Separação de dados a serem usandos ao longo do algoritimo.
+// Número de barras da  rede
 NBc=M(1,2);
 // Salva o número de ramos
 NR=M(1,1);
@@ -47,10 +38,9 @@ vrReal=1.0;
 vrImag=0;
 // Tensão mínima estabelecida para tensão na nova barra de geração
 vi=(0.977);
+
 // Inserção de numeros para barra de geração antes iguais a 0.
-
-fonteAMais=[];
-
+// Facilitando a criação de um arquivo de entrada para o usuário.
 a=1;
 for i=2:size(M,"r")
     if M(i,1)==0
@@ -66,79 +56,67 @@ end
 // criados.
 // -------------------------------------------------------------------
 
-function [controleDeTensaoReal,controleDeTensaoImag,limiteInferiorParaTensao,M,fonteAMais]=controleDeTensao(M)
-//    fonteAMais=input("Gostaria de inserir alguma fonte de geração a mais? 1=sim,2=não. ");
-//    if fonteAMais==1 then
-        // Busca a posição das barras onde se encontram os feeders da rede.
-        insercaoDeCarga=find(M(:,7)==1)
-        
-        // Vetor que traz as informações de quais barras estão recebendo potência.
-        quaisSaoAsBarrasDeInsercao=M(insercaoDeCarga,2);
-        
-        // Criação do vetor que será responsável por montar a equação a fim de controlar a tensão Real do novo feeder inserido.
-        controleDeTensaoReal=zeros(NR+M(1,3),1);
-        
-        // Criação do vetor que será responsável por montar a equação a fim de controlar a tensão Imaginária do novo feeder inserido.
-        controleDeTensaoImag=zeros(NR+M(1,3),1);
-        
-        // Definição de onde foi inserida a nova geração.
-        novaFonteInserida=M(size(M,"r"),2);
-        
-        // Posição de todas barras que recebem potência de um feeder.
-        posicaoTodasBarrasDeGeracao=find(M(:,7)==1);
-        
-        // Definição de todas barras que recebem potência de um feeder.
-        barrasDeGeracao=M(posicaoTodasBarrasDeGeracao,2);
-        
-        // Busca pelo feeder mais próximo ao novo feeder inserido
-        feedersAntecessores=find(barrasDeGeracao(:,1)<novaFonteInserida);
+function [controleDeTensaoReal,controleDeTensaoImag,limiteInferiorParaTensao,M]=controleDeTensao(M)
+    // Busca a posição das barras onde se encontram os feeders da rede.
+    insercaoDeCarga=find(M(:,7)==1)
     
-        // Definição do feeder mais próximo ao novo feeder inserido
-        feederMaisProximo=feedersAntecessores(size(feedersAntecessores,"c"));
-        
-        // Criação da equação de laço para controle de tensão real e imaginário.
-        for i=barrasDeGeracao(feederMaisProximo,1):NR+M(1,2)
-            if i>=novaFonteInserida
-                break
-            end
-            controleDeTensaoReal(i,1)=M(i+1,5); // Real.
-            controleDeTensaoImag(i,1)=M(i+1,6); // Imaginário.
+    // Vetor que traz as informações de quais barras estão recebendo potência.
+    quaisSaoAsBarrasDeInsercao=M(insercaoDeCarga,2);
+    
+    // Criação do vetor que será responsável por montar a equação a fim de controlar a tensão Real do novo feeder inserido.
+    controleDeTensaoReal=zeros(NR+M(1,3),1);
+    
+    // Criação do vetor que será responsável por montar a equação a fim de controlar a tensão Imaginária do novo feeder inserido.
+    controleDeTensaoImag=zeros(NR+M(1,3),1);
+    
+    // Definição de onde foi inserida a nova geração.
+    novaFonteInserida=M(size(M,"r"),2);
+    
+    // Posição de todas barras que recebem potência de um feeder.
+    posicaoTodasBarrasDeGeracao=find(M(:,7)==1);
+    
+    // Definição de todas barras que recebem potência de um feeder.
+    barrasDeGeracao=M(posicaoTodasBarrasDeGeracao,2);
+    
+    // Busca pelo feeder mais próximo ao novo feeder inserido
+    feedersAntecessores=find(barrasDeGeracao(:,1)<novaFonteInserida);
+
+    // Definição do feeder mais próximo ao novo feeder inserido
+    feederMaisProximo=feedersAntecessores(size(feedersAntecessores,"c"));
+    
+    // Criação da equação de laço para controle de tensão real e imaginário.
+    for i=barrasDeGeracao(feederMaisProximo,1):NR+M(1,2)
+        if i>=novaFonteInserida
+            break
         end
-        
-        // Transposição das matrizes para controle de tensão real e imaginário.
-        controleDeTensaoReal=controleDeTensaoReal'; // Real.
-        controleDeTensaoImag=controleDeTensaoImag'; // Imaginário.
-        
-        // Criação de uma matriz auxiliar para criação dos laços completos.
-        controleDeTensaoRealAux=controleDeTensaoReal;
-        
-        // Criação dos laços completos para controle de tensão.
-        controleDeTensaoReal=cat(2,controleDeTensaoReal,controleDeTensaoImag*(-1)); // Real.
-        controleDeTensaoImag=cat(2,controleDeTensaoImag,controleDeTensaoRealAux); // Imaginário
-        
-        // Expansão do vetor para que possa ser inseridas variáveis para cálculo de tensão.
-        controleDeTensaoReal=cat(2,controleDeTensaoReal,zeros(size(controleDeTensaoReal,"r"),size(controleDeTensaoReal,"r")+size(controleDeTensaoImag,"r"))); // Real.
-        controleDeTensaoImag=cat(2,controleDeTensaoImag,zeros(size(controleDeTensaoImag,"r"),size(controleDeTensaoReal,"r")+size(controleDeTensaoImag,"r"))); // Imagiário.
-        
-        // Criação do vetor para restição de tensão mínima na barra de geração.
-        limiteInferiorParaTensao=zeros(size(controleDeTensaoReal,"r"),size(controleDeTensaoReal,"c"));
-        
-        // Inserção de variáveis para calculo de tensão.
-        controleDeTensaoReal(1,2*(NR+M(1,3))+1)=1; // Real.
-        controleDeTensaoImag(1,2*(NR+M(1,3))+2)=1; // Imaginário.
-        
-        // Identificação de qual variável deverá controlar a tensão.
-        limiteInferiorParaTensao(1,2*(NR+M(1,3))+1)=-1;
-//    elseif(fonteAMais==2)
-//        disp("Você não optou por inserir uma nova fonte de geração");
-//        controleDeTensaoReal=[];
-//        controleDeTensaoImag=[];
-//        limiteInferiorParaTensao=[];
-//        M=M(1:NR,:);
-//        continue;
-//    else
-//        disp("Você digitou um valor inválido.");
-//    end
+        controleDeTensaoReal(i,1)=M(i+1,5); // Real.
+        controleDeTensaoImag(i,1)=M(i+1,6); // Imaginário.
+    end
+    
+    // Transposição das matrizes para controle de tensão real e imaginário.
+    controleDeTensaoReal=controleDeTensaoReal'; // Real.
+    controleDeTensaoImag=controleDeTensaoImag'; // Imaginário.
+    
+    // Criação de uma matriz auxiliar para criação dos laços completos.
+    controleDeTensaoRealAux=controleDeTensaoReal;
+    
+    // Criação dos laços completos para controle de tensão.
+    controleDeTensaoReal=cat(2,controleDeTensaoReal,controleDeTensaoImag*(-1)); // Real.
+    controleDeTensaoImag=cat(2,controleDeTensaoImag,controleDeTensaoRealAux); // Imaginário
+    
+    // Expansão do vetor para que possa ser inseridas variáveis para cálculo de tensão.
+    controleDeTensaoReal=cat(2,controleDeTensaoReal,zeros(size(controleDeTensaoReal,"r"),size(controleDeTensaoReal,"r")+size(controleDeTensaoImag,"r"))); // Real.
+    controleDeTensaoImag=cat(2,controleDeTensaoImag,zeros(size(controleDeTensaoImag,"r"),size(controleDeTensaoReal,"r")+size(controleDeTensaoImag,"r"))); // Imagiário.
+    
+    // Criação do vetor para restição de tensão mínima na barra de geração.
+    limiteInferiorParaTensao=zeros(size(controleDeTensaoReal,"r"),size(controleDeTensaoReal,"c"));
+    
+    // Inserção de variáveis para calculo de tensão.
+    controleDeTensaoReal(1,2*(NR+M(1,3))+1)=1; // Real.
+    controleDeTensaoImag(1,2*(NR+M(1,3))+2)=1; // Imaginário.
+    
+    // Identificação de qual variável deverá controlar a tensão.
+    limiteInferiorParaTensao(1,2*(NR+M(1,3))+1)=-1;
 endfunction
 
 // ---------------------------------------------------------------
@@ -149,14 +127,9 @@ endfunction
 // de rede.
 //----------------------------------------------------------------
 
-function [C,qnt_coluna_MC_incidencia,qnt_coluna_MC,me] = MatrizC(M,controleDeTensaoReal,controleDeTensaoImag,limiteInferiorParaTensao,fonteAMais)
-    
-//    if fonteAMais==2 then
-//        NR=NR-1;
-//        NB=NB-1;
-//    end
-    AuxC=1;// Auxiliar para criação da matriz inciência de "carga", endereço da coluna.
-    AuxG=1;// Auxiliar para criação da matriz inciência de "geração", endereço da coluna.
+function [C,qnt_coluna_MC_incidencia,qnt_coluna_MC,me] = MatrizC(M,controleDeTensaoReal,controleDeTensaoImag,limiteInferiorParaTensao)
+    AuxC=1; // Auxiliar para criação da matriz inciência de "carga", endereço da coluna.
+    AuxG=1; // Auxiliar para criação da matriz inciência de "geração", endereço da coluna.
         
     MAg=zeros(M(1,2),M(1,3)); // Criação de variáveis novas para descartar restrições de desigualdade.
 
@@ -184,15 +157,15 @@ function [C,qnt_coluna_MC_incidencia,qnt_coluna_MC,me] = MatrizC(M,controleDeTen
     // Criação da matriz que será responsável por receber quais ramos devem estar normalmente abertas ou fechadas.
     matrizRestricao=zeros(NR,size(C,"c"));
     
-    // Estrutura de repetição responsável pela criação da matriz responsável pela identificação das linhas abertas, assim como ligar ou desligar ramos da rede
-
+    // Estrutura de repetição responsável pela criação da matriz responsável pela identificação das linhas abertas, assim como ligar ou desligar ramos da rede.
     for i=2:(NR+1)
 
         if M(i,8)==1
             matrizRestricao(i-1,i-1)=1;
         end
     end
-    // Ajuste para inserção da variável de folga
+    
+    // Ajuste para inserção da variável de folga.
     matrizRestricao=cat(1,matrizRestricao,zeros(M(1,3),size(matrizRestricao,"c")));
 
     // Informação do tamanho da matriz incidência A. Definição para a quantidade de valores presentes na matriz Q.
@@ -220,25 +193,23 @@ function [C,qnt_coluna_MC_incidencia,qnt_coluna_MC,me] = MatrizC(M,controleDeTen
 
     // Junção da matriz Indicência com a matriz restrição.
     C=cat(1,C,matrizRestricao);
-//    pause
-//    if fonteAMais==1 then
-        C=cat(2,C,zeros(size(C,"r"),size(controleDeTensaoImag,"c")-size(C,"c")));
     
-        //Inserção da matriz de laço junto à matriz incidência C.
-        C=cat(1,C,controleDeTensaoReal);
-        C=cat(1,C,controleDeTensaoImag);
-        
-        //Valor responsável para a criação da matriz P futuramente.
-        qnt_coluna_MC=size(C,'c');
-        me=size(C,'r');
-        //Controle de tensão.
-        C=cat(1,C,limiteInferiorParaTensao);
-        
-//    else
-        //Valor responsável para a criação da matriz P futuramente.
-//        qnt_coluna_MC=size(C,'c');
-//    end
-        C=cat(2,C,zeros(size(C,"r"),size(C,"r")-size(C,"c")));
+    // Expansão para inserção das esquações de laço criadas para controle de tensão.
+    C=cat(2,C,zeros(size(C,"r"),size(controleDeTensaoImag,"c")-size(C,"c")));
+
+    // Inserção da matriz de laço junto à matriz incidência C.
+    C=cat(1,C,controleDeTensaoReal);
+    C=cat(1,C,controleDeTensaoImag);
+    
+    // Valor responsável para a criação da matriz P futuramente.
+    qnt_coluna_MC=size(C,'c');
+    me=size(C,'r');
+    
+    // Controle de tensão.
+    C=cat(1,C,limiteInferiorParaTensao);
+    
+    // Expansão da matriz incidência para que todas restrições funcionem.
+    C=cat(2,C,zeros(size(C,"r"),size(C,"r")-size(C,"c")));
 endfunction
 
 // --------------------------------------------------------------------
@@ -249,19 +220,14 @@ endfunction
 // Saída : Matriz de carga b.
 //---------------------------------------------------------------------
 
-function [b] = MatrizB(M,controleDeTensaoReal,controleDeTensaoImag,limiteInferiorParaTensao,fonteAMais)
-    
-//    if fonteAMais==2 then
-//        NR=NR-1;
-//        NB=NB-1;
-//    end
+function [b] = MatrizB(M,controleDeTensaoReal,controleDeTensaoImag,limiteInferiorParaTensao)
     // Definição inicial dos vetores de carga real e imaginário.
     b=zeros(NB,1); // Real.
     b1=zeros(NB,1); // Imaginário.
 
     // Criação da matriz B com todos valores negativos.
     for i=2:NR+1
-        // Verificação da característica da barra, 1=geração, 
+        // Verificação da característica da barra, 1=geração, diferente de 0=carga.
         if(M(i,7)==1)
             // Matriz b parte real da carga.
             b(M(i,1),1)=(M(i,3))//+M((i+1),9));
@@ -276,62 +242,20 @@ function [b] = MatrizB(M,controleDeTensaoReal,controleDeTensaoImag,limiteInferio
     end
 
     // Complemento referente a barras inseridas de folga e restrições de abertura/fechamento de ramos, além das equações de laço.
-//    if(NB==NR) // Fora necessário inserir esta comparação pois no caso da rede de 400barras, haviam na verdade 402 barras e 402 ramos, mas como 1 ramo era feeder e é considerado que neste caso seja inserido uma barra nova, a quantidade de barras e ramos era diferente, ou seja 403 barras e 402 ramos no total.
-        // Junção da matriz Solicitação de carga partes Real e Imaginária.
-        b=cat(1,b,b1);
-        // Inserção de restrições de laço pela lei de Kirchoff para a parte Real da rede.
-        b=cat(1,b,zeros(2*(NR+M(1,3)),1));
-//        if fonteAMais==1 then
-            // Inserção de tensão inicial Real de barra.
-            b=cat(1,b,vrReal*ones(size(controleDeTensaoReal,"r"),1));
-            
-            // Inserção de tensão inicial Imaginária de barra.
-            b=cat(1,b,vrImag*ones(size(controleDeTensaoImag,"r"),1));
-            
-            // Definição do limite inferior para controle de tensão.
-            b=cat(1,b,vi*(-1)*ones(size(limiteInferiorParaTensao,"r"),1));
-//        end
-//    elseif(NB<NR)
-//        // Junção da matriz Solicitação de carga partes Real e Imaginária.
-//        b=cat(1,b,b1);
-//        // Inserção de restrições de laço pela lei de Kirchoff para a parte Real da rede.
-//        b=cat(1,b,zeros(2*(NR+M(1,3)),1));
-//        
-////        if fonteAMais==1 then
-//            // Inserção de tensão inicial Real de barra.
-//            b=cat(1,b,vrReal*ones(size(controleDeTensaoReal,"r"),1));
-//            
-//            // Inserção de tensão inicial Imaginária de barra.
-//            b=cat(1,b,vrImag*ones(size(controleDeTensaoImag,"r"),1));
-//            
-//            // Definição do limite inferior para controle de tensão.
-//            b=cat(1,b,vi*(-1)*ones(size(limiteInferiorParaTensao,"r"),1));
-////            b=cat(1,b,zeros(22,1));
-////        end
-//    else
-//        // Ajuste caso o número de barras for superior ao número de ramos para parte imaginária
-////        pause
-////        b=cat(1,b,zeros(M(1,3),1));
-//        // Inserção das solicitações de carga para parte imaginária da rede.
-//        b=cat(1,b,b1);
-////        pause
-//        // Ajuste caso o número de barras for superior ao número de ramos para parte imaginária
-////        b=cat(1,b,zeros(M(1,3),1));
-////        pause
-//        // Inserção de restrições de laço pela lei de Kirchoff para a parte Real da rede.
-//        b=cat(1,b,zeros(2*(NR+M(1,3)),1));        
-////        pause
-////        if fonteAMais==1 then
-//            // Inserção de tensão inicial Real de barra.
-//            b=cat(1,b,vrReal*ones(size(controleDeTensaoReal,"r"),1));
-//            
-//            // Inserção de tensão inicial Imaginária de barra.
-//            b=cat(1,b,vrImag*ones(size(controleDeTensaoImag,"r"),1));
-//            
-//            // Definição do limite inferior para controle de tensão.
-//            b=cat(1,b,vi*(-1)*ones(size(limiteInferiorParaTensao,"r"),1));
-////        end
-//    end
+    // Junção da matriz Solicitação de carga partes Real e Imaginária.
+    b=cat(1,b,b1);
+    // Inserção de restrições de laço pela lei de Kirchoff para a parte Real da rede.
+    b=cat(1,b,zeros(2*(NR+M(1,3)),1));
+
+    // Inserção de tensão inicial Real de barra.
+    b=cat(1,b,vrReal*ones(size(controleDeTensaoReal,"r"),1));
+    
+    // Inserção de tensão inicial Imaginária de barra.
+    b=cat(1,b,vrImag*ones(size(controleDeTensaoImag,"r"),1));
+    
+    // Definição do limite inferior para controle de tensão.
+    b=cat(1,b,vi*(-1)*ones(size(limiteInferiorParaTensao,"r"),1));
+
 endfunction
 
 //-------------------------------------------------------------------
@@ -343,7 +267,7 @@ endfunction
 //-------------------------------------------------------------------
 
 function [Q]=MatrizQ(M,qnt_coluna_MC,controleDeTensaoReal,controleDeTensaoImag,C)
-    //Dimensionamento de tamanho para matriz Q e auxiliares.
+    // Dimensionamento de tamanho para matriz Q e auxiliares.
     Q=zeros(NR,qnt_coluna_MC_incidencia);
     Q2=Q;
     Q3=Q;
@@ -375,10 +299,9 @@ function [Q]=MatrizQ(M,qnt_coluna_MC,controleDeTensaoReal,controleDeTensaoImag,C
 
     // Inserção de peso para variáveis de folga.
     Q=cat(1,Q,AuxQ); // Real.
-
     Q2=cat(1,Q2,AuxQ); // Imaginário.
 
-    //Complemento à matriz Q (dobrando seu tamanho) para que seja possível, posteriormente, fazer a concatenação com a parte referente a reatancias da rede.
+    // Complemento à matriz Q (dobrando seu tamanho) para que seja possível, posteriormente, fazer a concatenação com a parte referente a reatancias da rede.
     Q=cat(2,Q,zeros(size(Q,'r'),size(Q,'c'))); // Parte real (resistencias).
     Q2=cat(2,zeros(size(Q2,'r'),size(Q2,'c')),Q2); // Parte imaginária (impedâncias).
 
@@ -387,22 +310,24 @@ function [Q]=MatrizQ(M,qnt_coluna_MC,controleDeTensaoReal,controleDeTensaoImag,C
 
     // Cálculo de quantos pesos deverão ser adicionados à matriz Q referente às equações de laço.
     quantasBarrasForamAdicionadas=qnt_coluna_MC-size(Q,"c");
+    
     // Expansão para acrescimo de peso para variáveis de laço.
     Q=cat(2,Q,zeros(size(Q,"r"),quantasBarrasForamAdicionadas));
     Q=cat(1,Q,zeros(quantasBarrasForamAdicionadas,size(Q,"c")));
 
     // Expanção de colunas decorrente da inserção das equações de laço.
     Q=cat(2,Q,zeros(size(Q,"r"),size(C,"r")-size(Q,"c")));
+    
     // Expanção de linhas decorrente da inserção das equações de laço.
     Q=cat(1,Q,zeros(size(C,"r")-size(Q,"r"),size(Q,"c")));
 
-// Correção para que a matriz se torne simétrica, ou seja, diferente de zero diagonal princial.
-for i=1:size(Q,"c")
-    if Q(i,i)==0
-        Q(i,i)=0.0000001;
+   // Correção para que a matriz se torne simétrica, ou seja, diferente de zero diagonal princial.
+    for i=1:size(Q,"c")
+        if Q(i,i)==0
+            Q(i,i)=0.0000001;
+        end
     end
-end
-
+    pause
 endfunction
 
 //----------------------------------------------------
@@ -412,13 +337,11 @@ endfunction
 //----------------------------------------------------
 
 function [p]=MatrizP(C)
-    
     //Dimensão desta matriz deve ser igual a quantidade de colunas da matriz incidência A.
     a=0;
     for i=1:size(C,"c")
         p(i,1)=0;
     end
-
 endfunction
 
 //----------------------------------------------------------------
@@ -433,16 +356,18 @@ function [C]=restricao(C,M)
         // Comunicação ao usuário.
         disp("Houve um Defeito Falha em algum ramo?");
         algumRamoFalhou=input("Digita 1 (um) para sim ou 0 (zero) para não. ");
+        
         // Verificação se houve Defeito Falha.
         if algumRamoFalhou==0
             break;
         elseif algumRamoFalhou==1 // Confirmação de Defeito Falha.
             //  Comunicação ao usuário.
             defeitoFalha=input("Digite o ramo com Defeito Falha: ");
+            
             // Verificação de possibilidade de existir o Defeito Falha informado.
             if(defeitoFalha>NB)
                 disp("Você digitou um valor inválido");
-            elseif(restricao~=0) // Confirmação de Defeito Falha informado.
+            elseif(defeitoFalha~=0) // Confirmação de Defeito Falha informado.
                 // Inserção de valor 1 para iniciar uma restrição capaz de desligar o ramo informado tanto para parte real quanto imaginária.
                 C(2*NB+defeitoFalha,defeitoFalha)=1;
                 C(2*NB+NR+M(1,3)+defeitoFalha,NR+M(1,3)+defeitoFalha)=1;
@@ -471,12 +396,12 @@ function [C]=restricao(C,M)
                 while 1>0
                     // Comunicação ao usuário.
                     ligar=input("Quais linhas que deseja ligar? Quando já colocou todas suas opções, digite 0. ");
+                    
                     if(ligar==0) // Foram fechadas todas que o usuário quis.
                         break;
                     elseif(ligar>NR) // Usuário digitou informação inválida.
                         disp("Você digitou um valor inválido")
-                        
-                    else // Usuário digitou informação válida
+                    else // Usuário digitou informação válida.
                         // Inserção de valor 0 para iniciar uma restrição capaz de ativar o ramo informado tanto para parte real quanto imaginária.
                         C(2*NB+ligar,ligar)=0; // Real.
                         C(2*NB+M(1,3)+NR+ligar,NR+M(1,3)+ligar)=0; // Imaginário.
@@ -500,21 +425,22 @@ endfunction
 // ------------------------------------------------
 
 // Instrução para criação da matriz responsável pela criação dos laços externos da rede.
-[controleDeTensaoReal,controleDeTensaoImag,limiteInferiorParaTensao,M,fonteAMais]=controleDeTensao(M);
+[controleDeTensaoReal,controleDeTensaoImag,limiteInferiorParaTensao,M]=controleDeTensao(M);
 
 // Instrução para criação da matriz incidência A.
-[C,qnt_coluna_MC_incidencia,qnt_coluna_MC,me]=MatrizC(M,controleDeTensaoReal,controleDeTensaoImag,limiteInferiorParaTensao,fonteAMais);
+[C,qnt_coluna_MC_incidencia,qnt_coluna_MC,me]=MatrizC(M,controleDeTensaoReal,controleDeTensaoImag,limiteInferiorParaTensao);
 
 // Instrução para criação da matriz incidência Q.
 [Q]=MatrizQ(M,qnt_coluna_MC,controleDeTensaoReal,controleDeTensaoImag,C);
 
 // Instrução para criação da matriz incidência P.
-[p]=MatrizP(C);
+//[p]=MatrizP(C);
 
+// Instrução para inserção de desligamento de barras em casa de Defeito Falha.
 //[C]=restricao(C,M);
 
 // Instrução para criação da matriz incidência B.
-[b]=MatrizB(M,controleDeTensaoReal,controleDeTensaoImag,limiteInferiorParaTensao,fonteAMais);
+[b]=MatrizB(M,controleDeTensaoReal,controleDeTensaoImag,limiteInferiorParaTensao);
 
 // Limite inferior.
 ci=(-5)*ones(size(C,"c"),1);
@@ -522,14 +448,18 @@ ci=(-5)*ones(size(C,"c"),1);
 cs=ci*(-1);
 
 // Função de otimização QPSOLVE - objetivo: Minimização de perdas na rede.
-[xopt,iact,iter,fopt]=qpsolve(Q,p,C,b,ci,cs,me)
-//
+[xopt,iact,iter,fopt]=qpsolve(Q,p,C,b,ci,cs,me);
+
+// Término de contagem de timer para tempo de resolução da rede.
+toc();
+
 // Informação ao usuário da resolução da rede.
 if xopt~=[]
     disp("Solução Ótima Encontrada!");
     disp(fopt,"O valor ótimo encontrado para a função objetivo.");
     disp(iter,"Foram necessárias esta quantidade de iterações para convergir.");
     disp("O primeiro valor se refere às iterações e o segundo às restrições desativadas para resolução da rede.");
+    disp(ans,"CPU time (s).");
 else
     disp("Solução não encontrada.");
 end
