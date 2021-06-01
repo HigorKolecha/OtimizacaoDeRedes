@@ -231,7 +231,7 @@ function [C,qnt_coluna_MC_incidencia,qnt_coluna_MC] = MatrizC(M,LE,quantosLacos)
     C=cat(1,C,matrizRestricao);
 
     // Inserção da matriz de laço junto à matriz incidência C.
-    C=cat(1,C,LE);
+//    C=cat(1,C,LE);
     
     // Inserção de novas colunas para que as restrições de laço funcionem.
     C=cat(2,C,zeros(size(C,"r"),size(C,"r")-size(C,"c")));
@@ -286,8 +286,8 @@ function [b] = MatrizB(M,quantosLacos,qnt_coluna_MC_incidencia,barraLaco,barraLa
         b=cat(1,b,zeros(2*(NR+M(1,3)),1));
         
         // Inserção de tensão inicial de barra.
-        b=cat(1,b,vf*ones(size(barraLaco,"r"),1));
-        b=cat(1,b,vfi*ones(size(barraLacoImag,"r"),1));
+//        b=cat(1,b,vf*ones(size(barraLaco,"r"),1));
+//        b=cat(1,b,vfi*ones(size(barraLacoImag,"r"),1));
     elseif(NB<NR)
         // Ajuste de tamanho para matriz referente a Solicitação de Carga parte Real e Imaginária
         b=b(1:NB);// Real
@@ -300,8 +300,8 @@ function [b] = MatrizB(M,quantosLacos,qnt_coluna_MC_incidencia,barraLaco,barraLa
         b=cat(1,b,zeros(2*(NR+M(1,3)),1));
         
         // Inserção de tensão inicial de barra.
-        b=cat(1,b,vf*ones(size(barraLaco,"r"),1));
-        b=cat(1,b,vfi*ones(size(barraLacoImag,"r"),1));
+//        b=cat(1,b,vf*ones(size(barraLaco,"r"),1));
+//        b=cat(1,b,vfi*ones(size(barraLacoImag,"r"),1));
 //        pause
     else
         // Ajuste de tamanho para matriz referente a Solicitação de Carga parte Real e Imaginária.
@@ -321,8 +321,8 @@ function [b] = MatrizB(M,quantosLacos,qnt_coluna_MC_incidencia,barraLaco,barraLa
         b=cat(1,b,zeros(2*(NR+M(1,3)),1));
         
         // Inserção de tensão inicial de barra.
-        b=cat(1,b,vf*ones(size(barraLaco,"r"),1));
-        b=cat(1,b,vfi*ones(size(barraLacoImag,"r"),1));
+//        b=cat(1,b,vf*ones(size(barraLaco,"r"),1));
+//        b=cat(1,b,vfi*ones(size(barraLacoImag,"r"),1));
     end
 endfunction
 
@@ -381,7 +381,7 @@ function [Q]=MatrizQ(M,qnt_coluna_MC_incidencia,quantosLacos)
     // Correção para que a matriz se torne simétrica, ou seja, diferente de zero diagonal princial.
     for i=1:size(Q,"c")
         if Q(i,i)==0
-            Q(i,i)=0.0000001;
+            Q(i,i)=0.00000000001;
         end
     end
 endfunction
@@ -411,7 +411,7 @@ function [C]=restricao(C,M)
     while 1>0 do
         // Comunicação ao usuário.
         disp("Houve um Defeito Falha em algum ramo?");
-        algumRamoFalhou=input("Digita 1 (um) para sim ou 0 (zero) para não. ");
+        algumRamoFalhou=input("Digite 1 (um) para sim ou 0 (zero) para não. ");
         
         // Verificação se houve Defeito Falha
         if algumRamoFalhou==0
