@@ -327,7 +327,6 @@ function [Q]=MatrizQ(M,qnt_coluna_MC,controleDeTensaoReal,controleDeTensaoImag,C
             Q(i,i)=0.0000001;
         end
     end
-    pause
 endfunction
 
 //----------------------------------------------------
@@ -434,10 +433,10 @@ endfunction
 [Q]=MatrizQ(M,qnt_coluna_MC,controleDeTensaoReal,controleDeTensaoImag,C);
 
 // Instrução para criação da matriz incidência P.
-//[p]=MatrizP(C);
+[p]=MatrizP(C);
 
 // Instrução para inserção de desligamento de barras em casa de Defeito Falha.
-//[C]=restricao(C,M);
+[C]=restricao(C,M);
 
 // Instrução para criação da matriz incidência B.
 [b]=MatrizB(M,controleDeTensaoReal,controleDeTensaoImag,limiteInferiorParaTensao);
